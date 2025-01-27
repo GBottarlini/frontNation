@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <title>Gestión Automóviles</title>
+</head>
+<body class="bg-gray-100 font-sans">
+    <div class="container mx-auto p-5">
+        <h1 class="text-3xl font-bold mb-5">Gestión de Clientes</h1>
+        <div id="filtros" class="mb-5 bg-white p-4 rounded shadow">
+            <h2 class="text-xl font-semibold mb-3">Filtros de Búsqueda</h2>
+            <div class="flex flex-wrap mb-3">
+                <input type="text" id="nombre" placeholder="Buscar por nombre" class="border rounded p-2 mr-2 mb-2 flex-1">
+                <input type="text" id="sucursal" placeholder="Buscar por sucursal" class="border rounded p-2 mr-2 mb-2 flex-1">
+                <input type="number" id="odometro" placeholder="Cantidad de Km" class="border rounded p-2 mr-2 mb-2 flex-1">
+                <input type="text" id="patente" placeholder="Buscar por patente" class="border rounded p-2 mr-2 mb-2 flex-1">
+                <input type="text" id="vin" placeholder="Buscar por VIN" class="border rounded p-2 mr-2 mb-2 flex-1">
+                <input type="text" id="totalVenta" placeholder="Valor de ventas" class="border rounded p-2 mr-2 mb-2 flex-1">
+                <input type="text" id="modelo" placeholder="Buscar por modelo" class="border rounded p-2 mr-2 mb-2 flex-1">
+                <input type="text" id="marca" placeholder="Buscar por marca" class="border rounded p-2 mr-2 mb-2 flex-1">
+                
+                <!-- Selector para ordenar -->
+                <select id="ordenar" class="border rounded p-2 mr-2 mb-2 flex-1">
+                    <option value="asc">Ordenar por Total Venta (Ascendente)</option>
+                    <option value="desc">Ordenar por Total Venta (Descendente)</option>
+                </select>
+            </div>
+            
+            <button id="filtrar" class="bg-blue-500 text-white rounded p-2 hover:bg-blue-600">Filtrar</button>
+        </div>
+        <div id="clientes-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-5">
+            <!-- Las tarjetas de clientes se generarán aquí -->
+        </div>
+        <div id="pagination" class="mt-5 flex justify-center">
+            <!-- Los botones de paginación se generarán aquí -->
+        </div>
+    </div>
+
+   
+   <!-- Modal -->
+<div id="client-modal" class="fixed inset-0 bg-gray-800 bg-opacity-70 hidden flex items-center justify-center">
+    <div class="bg-white p-6 rounded-lg shadow-lg max-w-lg w-full">
+        <h2 class="text-2xl font-bold mb-4 text-center">Detalles del Cliente</h2>
+        <div id="client-details" class="mb-4"></div>
+        <button class="bg-red-500 text-white rounded p-2 mt-3 w-full hover:bg-red-600 transition duration-200" onclick="closeModal()">Cerrar</button>
+    </div>
+</div>
+
+    <script src="scripts/app.js"></script>
+</body>
+</html>

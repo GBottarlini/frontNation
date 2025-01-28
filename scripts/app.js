@@ -1,5 +1,5 @@
 let currentPage = 1; // Página actual
-const limit = 9; // Número de clientes por página
+const limit = 12; // Número de clientes por página
 
 const filterInputs = document.querySelectorAll('#filtros input');
 
@@ -54,7 +54,8 @@ const loadClientes = (page, query = '') => {
                     <p class="text-gray-700">Nombre: <span class="font-semibold">${cliente.Nombre}</span></p>
                     <p class="text-gray-700">Sucursal: <span class="font-semibold">${cliente.Sucursal}</span></p>
                     <p class="text-gray-700">Kilómetros: <span class="font-semibold">${formattedOdometroValor} KM</span></p>
-                    <p class="text-gray-700">Total Venta: <span class="font-semibold">${formattedTotalVenta}</span></p>
+                    <p class="text-gray-700">Modelo: <span class="font-semibold">${cliente.Modelo}</span></p>
+                    <p class="text-gray-700">Contacto: <span class="font-semibold">${cliente.IncidentesRecepcionista}</span></p>
                     <button class="bg-blue-500 text-white rounded p-2 mt-2 hover:bg-blue-600" onclick="showClientDetails(${cliente.NumeroOrden})">Ver Detalles</button>
                 `;
                 container.appendChild(clienteDiv);

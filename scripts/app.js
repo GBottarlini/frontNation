@@ -7,7 +7,8 @@ const filterInputs = document.querySelectorAll('#filtros input');
 const buildQuery = () => {
     const nombre = document.getElementById('nombre').value;
     const sucursal = document.getElementById('sucursal').value;
-    const odometro = document.getElementById('odometro').value;
+    const odometroMin = document.getElementById('odometroMin').value; // Cambiado
+    const odometroMax = document.getElementById('odometroMax').value; // Cambiado
     const patente = document.getElementById('patente').value;
     const vin = document.getElementById('vin').value;
     const totalVenta = document.getElementById('totalVenta').value;
@@ -18,7 +19,8 @@ const buildQuery = () => {
     return new URLSearchParams({
         nombre,
         sucursal,
-        odometro,
+        odometroMin, // Agregado
+        odometroMax, // Agregado
         patente,
         vin,
         totalVenta,

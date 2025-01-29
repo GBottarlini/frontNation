@@ -5,22 +5,22 @@ const filterInputs = document.querySelectorAll('#filtros input');
 
 // Función para construir la consulta de filtros
 const buildQuery = () => {
-    const nombre = document.getElementById('nombre').value;
-    const sucursal = document.getElementById('sucursal').value;
-    const odometroMin = document.getElementById('odometroMin').value; // Cambiado
-    const odometroMax = document.getElementById('odometroMax').value; // Cambiado
-    const patente = document.getElementById('patente').value;
-    const vin = document.getElementById('vin').value;
-    const totalVenta = document.getElementById('totalVenta').value;
-    const modelo = document.getElementById('modelo').value;
-    const marca = document.getElementById('marca').value;
-    const ordenar = document.getElementById('ordenar').value;
+    const nombre = document.getElementById('nombre')?.value || '';
+    const sucursal = document.getElementById('sucursal')?.value || '';
+    const odometroMin = document.getElementById('odometroMin')?.value || '';
+    const odometroMax = document.getElementById('odometroMax')?.value || '';
+    const patente = document.getElementById('patente')?.value || '';
+    const vin = document.getElementById('vin')?.value || '';
+    const totalVenta = document.getElementById('totalVenta')?.value || '';
+    const modelo = document.getElementById('modelo')?.value || '';
+    const marca = document.getElementById('marca')?.value || '';
+    const ordenar = document.getElementById('ordenar')?.value || '';
 
     return new URLSearchParams({
         nombre,
         sucursal,
-        odometroMin, // Agregado
-        odometroMax, // Agregado
+        odometroMin,
+        odometroMax,
         patente,
         vin,
         totalVenta,
@@ -28,6 +28,34 @@ const buildQuery = () => {
         marca,
         ordenar
     }).toString();
+};
+
+// Función para manejar el cambio de estado del checkbox
+const toggleChecked = (numeroOrden) => {
+    console.log(`ToggleChecked llamado para ${numeroOrden}`);
+    const checkbox = document.getElementById(`check-${numeroOrden}`);
+    if (!checkbox) {
+        console.error(`Checkbox con id check-${numeroOrden} no encontrado`);
+        return;
+    }
+    const clienteDiv = checkbox.closest('div'); // Obtener el contenedor del cliente
+    if (!clienteDiv) {
+        console.error(`Contenedor del cliente no encontrado para ${numeroOrden}`);
+        return;
+    }
+    const checked = checkbox.checked;
+    const checkedClients = JSON.parse(localStorage.getItem('checkedClients')) || {};
+
+    if (checked) {
+        checkedClients[numeroOrden] = true; // Marcar como consultado
+        clienteDiv.classList.add('checked'); // Agregar clase para cambiar el color del contenedor
+    } else {
+        delete checkedClients[numeroOrden]; // Desmarcar
+        clienteDiv.classList.remove('checked'); // Quitar clase
+    }
+
+    localStorage.setItem('checkedClients', JSON.stringify(checkedClients)); // Guardar en localStorage
+    console.log('checkedClients actualizado:', checkedClients);
 };
 
 // Cargar clientes con los filtros aplicados
@@ -40,19 +68,25 @@ const loadClientes = (page, query = '') => {
             return response.json();
         })
         .then(data => {
-            const { docs, totalPages } = data; // docs contiene los clientes y totalPages el número total de páginas
+            const { docs, totalPages } = data;
             const container = document.getElementById('clientes-container');
-            container.innerHTML = ''; // Limpiar el contenedor antes de agregar nuevos clientes
+            container.innerHTML = '';
 
-            // Agregar los clientes al contenedor
+            // Obtener los clientes marcados como consultados
+            const checkedClients = JSON.parse(localStorage.getItem('checkedClients')) || {};
+            console.log('checkedClients cargado:', checkedClients);
+
             docs.forEach(cliente => {
                 const formattedTotalVenta = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(cliente.TotalVenta);
                 const formattedOdometroValor = cliente.OdometroValor.toLocaleString('es-CL');
 
                 const clienteDiv = document.createElement('div');
-                clienteDiv.className = 'bg-white p-4 rounded-lg shadow-md transition-transform transform hover:scale-105';
+                clienteDiv.className = `p-4 rounded-lg shadow-md transition-transform transform hover:scale-105 ${checkedClients[cliente.NumeroOrden] ? 'checked bg-gray-100' : 'bg-white'}`;
                 clienteDiv.innerHTML = `
-                    <h3 class="text-xl font-bold">Número de Orden: ${cliente.NumeroOrden}</h3>
+                    <label class="flex items-center">
+                        <input type="checkbox" class="mr-2" id="check-${cliente.NumeroOrden}" onchange="toggleChecked(${cliente.NumeroOrden})" ${checkedClients[cliente.NumeroOrden] ? 'checked' : ''}>
+                        <h3 class="text-xl font-bold">Número de Orden: ${cliente.NumeroOrden}</h3>
+                    </label>
                     <p class="text-gray-700">Nombre: <span class="font-semibold">${cliente.Nombre}</span></p>
                     <p class="text-gray-700">Sucursal: <span class="font-semibold">${cliente.Sucursal}</span></p>
                     <p class="text-gray-700">Kilómetros: <span class="font-semibold">${formattedOdometroValor} KM</span></p>
@@ -60,10 +94,15 @@ const loadClientes = (page, query = '') => {
                     <p class="text-gray-700">Contacto: <span class="font-semibold">${cliente.IncidentesRecepcionista}</span></p>
                     <button class="bg-blue-500 text-white rounded p-2 mt-2 hover:bg-blue-600" onclick="showClientDetails(${cliente.NumeroOrden})">Ver Detalles</button>
                 `;
+
+                // Agregar la clase 'checked' si el cliente ya ha sido consultado
+                if (checkedClients[cliente.NumeroOrden]) {
+                    clienteDiv.classList.add('checked');
+                }
+
                 container.appendChild(clienteDiv);
             });
 
-            // Actualizar la paginación
             updatePagination(totalPages);
         })
         .catch(error => console.error('Error al obtener los clientes:', error));
@@ -92,38 +131,68 @@ const updatePagination = (totalPages) => {
     const paginationContainer = document.getElementById('pagination');
     paginationContainer.innerHTML = ''; // Limpiar la paginación
 
+    const nav = document.createElement('nav');
+    nav.setAttribute('aria-label', 'Page navigation');
+    const ul = document.createElement('ul');
+    ul.className = 'inline-flex space-x-2';
+
     // Botón de página anterior
-    const prevButton = document.createElement('button');
-    prevButton.innerText = '←';
-    prevButton.className = 'bg-blue-500 text-white rounded p-2 mx-1 hover:bg-blue-600';
-    prevButton.disabled = currentPage === 1; // Deshabilitar si estamos en la primera página
-    prevButton.onclick = () => {
+    const prevButton = document.createElement('li');
+    const prevBtn = document.createElement('button');
+    prevBtn.className = 'flex items-center justify-center w-10 h-10 text-indigo-600 transition-colors duration-150 rounded-full focus:shadow-outline hover:bg-indigo-100';
+    prevBtn.innerHTML = `<svg class="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" fill-rule="evenodd"></path></svg>`;
+    prevBtn.onclick = () => {
         if (currentPage > 1) {
             currentPage--;
             const query = buildQuery(); // Mantener los filtros
             loadClientes(currentPage, query);
         }
     };
-    paginationContainer.appendChild(prevButton);
+    prevButton.appendChild(prevBtn);
+    ul.appendChild(prevButton);
 
-    // Mostrar número de página actual
-    const pageInfo = document.createElement('span');
-    pageInfo.innerText = `Página ${currentPage} de ${totalPages}`;
-    paginationContainer.appendChild(pageInfo);
+    // Calcular el rango de páginas a mostrar
+    const maxVisiblePages = 5; // Número máximo de botones de página a mostrar
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+    // Ajustar el rango si está cerca del final
+    if (endPage - startPage < maxVisiblePages - 1) {
+        startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+
+    // Botones de páginas
+    for (let i = startPage; i <= endPage; i++) {
+        const pageButton = document.createElement('li');
+        const pageBtn = document.createElement('button');
+        pageBtn.className = `w-10 h-10 transition-colors duration-150 rounded-full focus:shadow-outline hover:bg-indigo-100 ${currentPage === i ? 'bg-indigo-600 text-white' : 'text-indigo-600'}`;
+        pageBtn.innerText = i;
+        pageBtn.onclick = () => {
+            currentPage = i;
+            const query = buildQuery(); // Mantener los filtros
+            loadClientes(currentPage, query);
+        };
+        pageButton.appendChild(pageBtn);
+        ul.appendChild(pageButton);
+    }
 
     // Botón de página siguiente
-    const nextButton = document.createElement('button');
-    nextButton.innerText = '→';
-    nextButton.className = 'bg-blue-500 text-white rounded p-2 mx-1 hover:bg-blue-600';
-    nextButton.disabled = currentPage === totalPages; // Deshabilitar si estamos en la última página
-    nextButton.onclick = () => {
+    const nextButton = document.createElement('li');
+    const nextBtn = document.createElement('button');
+    nextBtn.className = 'flex items-center justify-center w-10 h-10 text-indigo-600 transition-colors duration-150 rounded-full focus:shadow-outline hover:bg-indigo-100';
+    nextBtn.innerHTML = `<svg class="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" fill-rule="evenodd"></path></svg>`;
+    nextBtn.onclick = () => {
         if (currentPage < totalPages) {
             currentPage++;
             const query = buildQuery(); // Mantener los filtros
             loadClientes(currentPage, query);
         }
     };
-    paginationContainer.appendChild(nextButton);
+    nextButton.appendChild(nextBtn);
+    ul.appendChild(nextButton);
+
+    nav.appendChild(ul);
+    paginationContainer.appendChild(nav);
 };
 
 // Función para mostrar detalles del cliente

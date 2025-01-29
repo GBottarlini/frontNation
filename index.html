@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="styles/styles.css">
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <title>Gestión Automóviles</title>
 </head>
@@ -30,11 +31,6 @@
                 <input type="text" id="modelo" placeholder="Buscar por modelo" class="border rounded p-2 mr-2 mb-2 flex-1">
                 <input type="text" id="marca" placeholder="Buscar por marca" class="border rounded p-2 mr-2 mb-2 flex-1">
                 
-                <!-- Selector para ordenar -->
-                <select id="ordenar" class="border rounded p-2 mr-2 mb-2 flex-1">
-                    <option value="asc">Ordenar por Total Venta (Ascendente)</option>
-                    <option value="desc">Ordenar por Total Venta (Descendente)</option>
-                </select>
             </div>
             
             <button id="filtrar" class="bg-blue-500 text-white rounded p-2 hover:bg-blue-600">Filtrar</button>

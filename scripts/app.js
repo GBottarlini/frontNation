@@ -31,60 +31,47 @@ const buildQuery = () => {
 };
 
 // Función para manejar el cambio de estado del checkbox
-const toggleChecked = (numeroOrden) => {
-    console.log(`ToggleChecked llamado para ${numeroOrden}`);
+const toggleChecked = async (numeroOrden) => {
     const checkbox = document.getElementById(`check-${numeroOrden}`);
-    if (!checkbox) {
-        console.error(`Checkbox con id check-${numeroOrden} no encontrado`);
-        return;
-    }
-    const clienteDiv = checkbox.closest('div'); // Obtener el contenedor del cliente
-    if (!clienteDiv) {
-        console.error(`Contenedor del cliente no encontrado para ${numeroOrden}`);
-        return;
-    }
     const checked = checkbox.checked;
-    const checkedClients = JSON.parse(localStorage.getItem('checkedClients')) || {};
 
-    if (checked) {
-        checkedClients[numeroOrden] = true; // Marcar como consultado
-        clienteDiv.classList.add('checked'); // Agregar clase para cambiar el color del contenedor
-    } else {
-        delete checkedClients[numeroOrden]; // Desmarcar
-        clienteDiv.classList.remove('checked'); // Quitar clase
+    try {
+        const response = await fetch(`https://backnation.onrender.com/clientes/${numeroOrden}/consultado`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ consultado: checked })
+        });
+
+        if (!response.ok) {
+            throw new Error('Error al actualizar el estado de consultado');
+        }
+
+        // Recargar los clientes para reflejar el cambio
+        const query = buildQuery();
+        loadClientes(currentPage, query);
+    } catch (error) {
+        console.error('Error al actualizar el estado de consultado:', error);
     }
-
-    localStorage.setItem('checkedClients', JSON.stringify(checkedClients)); // Guardar en localStorage
-    console.log('checkedClients actualizado:', checkedClients);
 };
 
 // Cargar clientes con los filtros aplicados
 const loadClientes = (page, query = '') => {
     fetch(`https://backnation.onrender.com/clientes?page=${page}&limit=${limit}&${query}`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Error en la respuesta de la API');
-            }
-            return response.json();
-        })
+        .then(response => response.json())
         .then(data => {
             const { docs, totalPages } = data;
             const container = document.getElementById('clientes-container');
             container.innerHTML = '';
-
-            // Obtener los clientes marcados como consultados
-            const checkedClients = JSON.parse(localStorage.getItem('checkedClients')) || {};
-            console.log('checkedClients cargado:', checkedClients);
 
             docs.forEach(cliente => {
                 const formattedTotalVenta = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(cliente.TotalVenta);
                 const formattedOdometroValor = cliente.OdometroValor.toLocaleString('es-CL');
 
                 const clienteDiv = document.createElement('div');
-                clienteDiv.className = `p-4 rounded-lg shadow-md transition-transform transform hover:scale-105 ${checkedClients[cliente.NumeroOrden] ? 'checked bg-gray-100' : 'bg-white'}`;
+                clienteDiv.className = `p-4 rounded-lg shadow-md transition-transform transform hover:scale-105 ${cliente.consultado ? 'checked bg-green-100' : 'bg-white'}`;
                 clienteDiv.innerHTML = `
                     <label class="flex items-center">
-                        <input type="checkbox" class="mr-2" id="check-${cliente.NumeroOrden}" onchange="toggleChecked(${cliente.NumeroOrden})" ${checkedClients[cliente.NumeroOrden] ? 'checked' : ''}>
+                        <input type="checkbox" class="mr-2" id="check-${cliente.NumeroOrden}" onchange="toggleChecked(${cliente.NumeroOrden})" ${cliente.consultado ? 'checked' : ''}>
                         <h3 class="text-xl font-bold">Número de Orden: ${cliente.NumeroOrden}</h3>
                     </label>
                     <p class="text-gray-700">Nombre: <span class="font-semibold">${cliente.Nombre}</span></p>
@@ -95,11 +82,6 @@ const loadClientes = (page, query = '') => {
                     <button class="bg-blue-500 text-white rounded p-2 mt-2 hover:bg-blue-600" onclick="showClientDetails(${cliente.NumeroOrden})">Ver Detalles</button>
                 `;
 
-                // Agregar la clase 'checked' si el cliente ya ha sido consultado
-                if (checkedClients[cliente.NumeroOrden]) {
-                    clienteDiv.classList.add('checked');
-                }
-
                 container.appendChild(clienteDiv);
             });
 
@@ -107,7 +89,6 @@ const loadClientes = (page, query = '') => {
         })
         .catch(error => console.error('Error al obtener los clientes:', error));
 };
-
 // Manejar el evento del botón "Filtrar"
 document.getElementById('filtrar').addEventListener('click', () => {
     const query = buildQuery();

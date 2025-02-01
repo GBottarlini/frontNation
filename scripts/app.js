@@ -1,3 +1,7 @@
+// Conectar al servidor WebSocket
+const socket = io('https://backnation.onrender.com');
+
+// Variables globales
 let currentPage = 1; // Página actual
 const limit = 12; // Número de clientes por página
 
@@ -30,7 +34,7 @@ const buildQuery = () => {
     }).toString();
 };
 
-// Función para manejar el cambio de estado del checkbox
+// Función para marcar/desmarcar como consultado
 const toggleChecked = async (numeroOrden) => {
     const checkbox = document.getElementById(`check-${numeroOrden}`);
     const checked = checkbox.checked;
@@ -43,16 +47,29 @@ const toggleChecked = async (numeroOrden) => {
         });
 
         if (!response.ok) {
-            throw new Error('Error al actualizar el estado de consultado');
+            const errorData = await response.json(); // Intenta obtener el mensaje de error del servidor
+            throw new Error(`Error al actualizar el estado de consultado: ${response.status} - ${errorData.message || response.statusText}`);
         }
-
-        // Recargar los clientes para reflejar el cambio
-        const query = buildQuery();
-        loadClientes(currentPage, query);
     } catch (error) {
         console.error('Error al actualizar el estado de consultado:', error);
+        alert(error.message); // Muestra un mensaje de error más descriptivo al usuario
+        checkbox.checked = !checked; // Revertir el checkbox en caso de error
     }
 };
+
+// Escuchar eventos de actualización de clientes desde el servidor
+socket.on('cliente_actualizado', (clienteActualizado) => {
+    console.log('Cliente actualizado recibido:', clienteActualizado);
+    // Actualizar la card específica usando el NumeroOrden
+    const card = document.querySelector(`#check-${clienteActualizado.NumeroOrden}`).closest('.p-4'); // Selecciona la card
+    if (card) {
+        const checkbox = card.querySelector(`#check-${clienteActualizado.NumeroOrden}`);
+        checkbox.checked = clienteActualizado.consultado; // Actualiza el checkbox
+        card.classList.toggle('bg-green-100', clienteActualizado.consultado); // Actualiza el estilo de la card
+        card.classList.toggle('bg-white', !clienteActualizado.consultado); // Actualiza el estilo de la card
+        card.classList.toggle('checked', clienteActualizado.consultado); // Actualiza el estilo de la card
+    }
+});
 
 // Cargar clientes con los filtros aplicados
 const loadClientes = (page, query = '') => {
@@ -89,6 +106,7 @@ const loadClientes = (page, query = '') => {
         })
         .catch(error => console.error('Error al obtener los clientes:', error));
 };
+
 // Manejar el evento del botón "Filtrar"
 document.getElementById('filtrar').addEventListener('click', () => {
     const query = buildQuery();

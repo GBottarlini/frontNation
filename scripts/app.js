@@ -4,6 +4,7 @@ const socket = io('https://backnation.onrender.com');
 // Variables globales
 let currentPage = 1; // Página actual
 const limit = 12; // Número de clientes por página
+let currentClienteId = null; // Guarda el ID del cliente abierto
 
 const filterInputs = document.querySelectorAll('#filtros input');
 
@@ -20,7 +21,8 @@ const buildQuery = () => {
     const marca = document.getElementById('marca')?.value || '';
     const ordenar = document.getElementById('ordenar')?.value || '';
 
-    return new URLSearchParams({
+    // Crear el objeto de parámetros
+    const params = new URLSearchParams({
         nombre,
         sucursal,
         odometroMin,
@@ -30,8 +32,15 @@ const buildQuery = () => {
         totalVenta,
         modelo,
         marca,
-        ordenar
-    }).toString();
+        ordenar,
+    });
+
+    // Solo incluir 'consultado' si el checkbox está marcado
+    if (document.getElementById('filtroConsultados')?.checked) {
+        params.append('consultado', 'true');
+    }
+
+    return params.toString();
 };
 
 // Función para marcar/desmarcar como consultado
@@ -47,28 +56,25 @@ const toggleChecked = async (numeroOrden) => {
         });
 
         if (!response.ok) {
-            const errorData = await response.json(); // Intenta obtener el mensaje de error del servidor
-            throw new Error(`Error al actualizar el estado de consultado: ${response.status} - ${errorData.message || response.statusText}`);
+            throw new Error('Error al actualizar el estado de consultado');
         }
     } catch (error) {
         console.error('Error al actualizar el estado de consultado:', error);
-        alert(error.message); // Muestra un mensaje de error más descriptivo al usuario
-        checkbox.checked = !checked; // Revertir el checkbox en caso de error
     }
 };
+
+// Filtro clientes consultados
+document.getElementById('filtroConsultados').addEventListener('change', () => {
+    currentPage = 1; // Reiniciar a la primera página
+    const query = buildQuery();
+    loadClientes(currentPage, query);
+});
 
 // Escuchar eventos de actualización de clientes desde el servidor
 socket.on('cliente_actualizado', (clienteActualizado) => {
     console.log('Cliente actualizado recibido:', clienteActualizado);
-    // Actualizar la card específica usando el NumeroOrden
-    const card = document.querySelector(`#check-${clienteActualizado.NumeroOrden}`).closest('.p-4'); // Selecciona la card
-    if (card) {
-        const checkbox = card.querySelector(`#check-${clienteActualizado.NumeroOrden}`);
-        checkbox.checked = clienteActualizado.consultado; // Actualiza el checkbox
-        card.classList.toggle('bg-green-100', clienteActualizado.consultado); // Actualiza el estilo de la card
-        card.classList.toggle('bg-white', !clienteActualizado.consultado); // Actualiza el estilo de la card
-        card.classList.toggle('checked', clienteActualizado.consultado); // Actualiza el estilo de la card
-    }
+    const query = buildQuery();
+    loadClientes(currentPage, query); // Recargar la lista completa
 });
 
 // Cargar clientes con los filtros aplicados
@@ -76,10 +82,13 @@ const loadClientes = (page, query = '') => {
     fetch(`https://backnation.onrender.com/clientes?page=${page}&limit=${limit}&${query}`)
         .then(response => response.json())
         .then(data => {
-            const { docs, totalPages } = data;
+            const { docs, totalPages, totalDocs } = data;
+            console.log("Datos recibidos:", data); // Depuración
+
             const container = document.getElementById('clientes-container');
             container.innerHTML = '';
 
+            // Renderizar los clientes
             docs.forEach(cliente => {
                 const formattedTotalVenta = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(cliente.TotalVenta);
                 const formattedOdometroValor = cliente.OdometroValor.toLocaleString('es-CL');
@@ -102,6 +111,7 @@ const loadClientes = (page, query = '') => {
                 container.appendChild(clienteDiv);
             });
 
+            // Actualizar la paginación
             updatePagination(totalPages);
         })
         .catch(error => console.error('Error al obtener los clientes:', error));
@@ -196,6 +206,7 @@ const updatePagination = (totalPages) => {
 
 // Función para mostrar detalles del cliente
 const showClientDetails = (numeroOrden) => {
+    currentClienteId = numeroOrden; // Almacenar el ID del cliente abierto
     fetch(`https://backnation.onrender.com/clientes/${numeroOrden}`)
         .then(response => {
             if (!response.ok) {
@@ -208,6 +219,7 @@ const showClientDetails = (numeroOrden) => {
             const formattedTotalVenta = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(cliente.TotalVenta);
             const formattedOdometroValor = cliente.OdometroValor.toLocaleString('es-CL');
 
+            // Mostrar detalles del cliente
             const clientDetails = `
                 <p><strong>Número de Orden:</strong> ${cliente.NumeroOrden}</p>
                 <p><strong>Nombre:</strong> ${cliente.Nombre}</p>
@@ -233,11 +245,73 @@ const showClientDetails = (numeroOrden) => {
                 <p><strong>Resultado Técnico:</strong> ${cliente.ResultadoTecnico}</p>
             `;
             document.getElementById('client-details').innerHTML = clientDetails;
+
+            // Mostrar anotaciones
+            const anotacionesHTML = cliente.anotaciones.map(anotacion => `
+                <div class="group relative p-3 bg-gray-50 rounded hover:bg-gray-100">
+                    <button 
+                        onclick="eliminarAnotacion(${cliente.NumeroOrden}, '${anotacion._id}')" 
+                        class="absolute top-1 right-1 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                        ✕
+                    </button>
+                    <p class="text-sm text-gray-500">
+                        ${new Date(anotacion.fecha).toLocaleDateString()}
+                    </p>
+                    <p class="mt-1">${anotacion.texto}</p>
+                </div>
+            `).join('');
+            document.getElementById('anotaciones-list').innerHTML = anotacionesHTML;
+
+            // Mostrar el modal
             document.getElementById('client-modal').classList.remove('hidden');
         })
         .catch(error => console.error('Error al obtener los detalles del cliente:', error));
 };
 
+// Funcion para agregar anotaciones
+const agregarAnotacion = async () => {
+    const texto = document.getElementById('nueva-anotacion').value;
+    if (!texto) return;
+
+    try {
+        const response = await fetch(
+            `https://backnation.onrender.com/clientes/${currentClienteId}/anotaciones`,
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ texto })
+            }
+        );
+
+        if (response.ok) {
+            document.getElementById('nueva-anotacion').value = '';
+            showClientDetails(currentClienteId); // Recargar el modal
+        }
+    } catch (error) {
+        console.error('Error al guardar anotación:', error);
+    }
+};
+
+// Función para eliminar anotación
+const eliminarAnotacion = async (numeroOrden, anotacionId) => {
+    if (!confirm("¿Estás seguro de eliminar esta anotación?")) return;
+
+    try {
+        const response = await fetch(
+            `https://backnation.onrender.com/clientes/${numeroOrden}/anotaciones/${anotacionId}`,
+            { method: 'DELETE' }
+        );
+
+        if (response.ok) {
+            showClientDetails(numeroOrden); // Recargar detalles
+        }
+    } catch (error) {
+        console.error('Error al eliminar anotación:', error);
+    }
+};
+
+// Función para cerrar el modal
 const closeModal = () => {
     document.getElementById('client-modal').classList.add('hidden');
 };
